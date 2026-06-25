@@ -1,7 +1,7 @@
 #!/bin/sh
 input=$(cat)
 
-model=$(echo "$input" | jq -r '.model.display_name // "Unknown"')
+model=$(echo "$input" | jq -r '.model.display_name // "Unknown"' | sed 's/^Claude //')
 used_pct=$(echo "$input" | jq -r '.context_window.used_percentage // empty')
 input_tok=$(echo "$input" | jq -r '.context_window.current_usage.input_tokens // empty')
 output_tok=$(echo "$input" | jq -r '.context_window.current_usage.output_tokens // empty')
@@ -10,10 +10,23 @@ total_out=$(echo "$input" | jq -r '.context_window.total_output_tokens // 0')
 five_pct=$(echo "$input" | jq -r '.rate_limits.five_hour.used_percentage // empty')
 week_pct=$(echo "$input" | jq -r '.rate_limits.seven_day.used_percentage // empty')
 
+YELLOW=$(printf '\033[33m')
+RED=$(printf '\033[31m')
+GREEN=$(printf '\033[32m')
+RESET=$(printf '\033[0m')
+
 printf "%s" "$model"
 
 if [ -n "$used_pct" ]; then
-  printf " | ctx: $(printf '%.0f' "$used_pct")%%"
+  pct=$(printf '%.0f' "$used_pct")
+  if [ "$pct" -ge 80 ]; then
+    color="$RED"
+  elif [ "$pct" -ge 50 ]; then
+    color="$YELLOW"
+  else
+    color="$GREEN"
+  fi
+  printf " | ctx: %s%s%%%s" "$color" "$pct" "$RESET"
 fi
 
 if [ -n "$input_tok" ] && [ -n "$output_tok" ]; then
@@ -32,26 +45,12 @@ if [ -n "$five_pct" ] || [ -n "$week_pct" ]; then
 fi
 
 FLAG_DIR="/tmp/claude-plugin-flags"
-GREEN=$(printf '\033[32m')
-RESET=$(printf '\033[0m')
-now=$(date +%s)
 active=""
 for flag in "$FLAG_DIR"/*; do
   [ -f "$flag" ] || continue
   name=$(basename "$flag")
-  case "$name" in
-    *.perm)
-      label="${name%.perm}"
-      active="$active ${GREEN}● ${label}${RESET}"
-      ;;
-    *)
-      mtime=$(stat -f %m "$flag" 2>/dev/null) || continue
-      age=$(( now - mtime ))
-      if [ "$age" -le 10 ]; then
-        active="$active ${GREEN}● ${name}${RESET}"
-      fi
-      ;;
-  esac
+  label="${name%.perm}"
+  active="$active ${GREEN}● ${label}${RESET}"
 done
 if [ -n "$active" ]; then
   printf " |%s" "$active"

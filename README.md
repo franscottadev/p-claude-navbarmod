@@ -4,18 +4,7 @@ Customized bottom statusline + hooks for Claude Code. Shows model, context windo
 
 ## Preview
 
-### Statusline
-
-```
-Claude Sonnet 4.6 | ctx: 12% (in:3420 out:891) | sess: 48230 tok | 5h: 8% 7d: 2% | ● caveman ● memo
-```
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  Claude Sonnet 4.6 | ctx: 12% (in:3420 out:891) | sess: 48230 tok | 5h: 8% 7d: 2% | ● caveman ● memo  │
-└─────────────────────────────────────────────────────────────────────────────┘
-  ▲ model          ▲ context used   ▲ call tokens        ▲ session total   ▲ rate limits   ▲ active skills
-```
+![Statusline preview](example.png)
 
 **Segments:**
 | Segment | Example | Description |
@@ -35,7 +24,7 @@ Claude Sonnet 4.6 | ctx: 12% (in:3420 out:891) | sess: 48230 tok | 5h: 8% 7d: 2%
 
 ```sh
 git clone https://github.com/franscottadev/p-claude-navbarmod
-cd claude-navbar-mod
+cd p-claude-navbarmod
 ./install.sh
 ```
 
@@ -88,11 +77,8 @@ More presets coming.
 
 ## Uninstall
 
-Restore from backup:
-
 ```sh
-cp ~/.claude/backups/navbar-mod-TIMESTAMP/settings.json ~/.claude/settings.json
-rm ~/.claude/statusline-custom.sh
-rm ~/.claude/hooks/plugin-tracker.sh
+./uninstall.sh
 ```
-# p-claude-navbarmod
+
+Interactive — picks scope, finds latest backup, restores `settings.json` or strips navbar keys, clears plugin flags. Restart Claude Code after.

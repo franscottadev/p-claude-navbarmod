@@ -34,7 +34,7 @@ Claude Sonnet 4.6 | ctx: 12% (in:3420 out:891) | sess: 48230 tok | 5h: 8% 7d: 2%
 ## Install
 
 ```sh
-git clone https://github.com/your-username/claude-navbar-mod
+git clone https://github.com/franscottadev/p-claude-navbarmod
 cd claude-navbar-mod
 ./install.sh
 ```

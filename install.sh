@@ -1,7 +1,8 @@
 #!/bin/sh
 set -e
 
-REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_URL="https://github.com/franscottadev/p-claude-navbarmod"
+REPO_RAW="https://raw.githubusercontent.com/franscottadev/p-claude-navbarmod/main"
 GREEN='\033[32m'
 YELLOW='\033[33m'
 RED='\033[31m'
@@ -14,14 +15,44 @@ warn() { printf "${YELLOW}⚠${RESET}  %s\n" "$1"; }
 err()  { printf "${RED}✗${RESET} %s\n" "$1"; }
 ask()  { printf "${BOLD}%s${RESET} " "$1"; }
 
-# ── 1. Scope ─────────────────────────────────────────────────────────────────
 echo ""
 say "Claude Navbar Mod — Installer"
 echo "────────────────────────────"
+
+# ── Bootstrap: detect if running via curl pipe ────────────────────────────────
+# When piped via `curl | bash`, $0 is "bash" or "sh" and local files don't exist.
+SCRIPT_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd)" || SCRIPT_DIR=""
+BOOTSTRAPPED=0
+CLONE_DIR=""
+
+if [ ! -f "$SCRIPT_DIR/statusline-custom.sh" ]; then
+  echo ""
+  say "Fetching repo..."
+
+  # Check deps
+  if ! command -v git >/dev/null 2>&1; then
+    err "git is required. Install git and try again."; exit 1
+  fi
+
+  CLONE_DIR="$(mktemp -d)/p-claude-navbarmod"
+  git clone --depth=1 "$REPO_URL" "$CLONE_DIR" >/dev/null 2>&1
+  ok "Cloned to $CLONE_DIR"
+  SCRIPT_DIR="$CLONE_DIR"
+  BOOTSTRAPPED=1
+fi
+
+REPO_DIR="$SCRIPT_DIR"
+
+# ── Check deps ────────────────────────────────────────────────────────────────
+if ! command -v jq >/dev/null 2>&1; then
+  err "jq is required. Install with: brew install jq"; exit 1
+fi
+
+# ── 1. Scope ──────────────────────────────────────────────────────────────────
 echo ""
 echo "Install scope:"
-echo "  1) Global  (~/.claude/)      — applies to all projects"
-echo "  2) Project (.claude/)        — current project only"
+echo "  1) Global  (~/.claude/)   — applies to all projects"
+echo "  2) Project (.claude/)     — current project only"
 echo ""
 ask "Choose [1/2] (default: 1):"
 read scope_choice
@@ -31,7 +62,7 @@ case "${scope_choice:-1}" in
 esac
 ok "Scope: $CLAUDE_DIR"
 
-# ── 2. Preset selection ───────────────────────────────────────────────────────
+# ── 2. Preset ─────────────────────────────────────────────────────────────────
 echo ""
 echo "Available presets:"
 echo "  1) claude-code   — model, ctx, tokens, rate limits, active plugins"
@@ -40,18 +71,16 @@ ask "Choose preset [1] (default: 1):"
 read preset_choice
 PRESET="claude-code"
 ok "Preset: $PRESET"
-PRESET_DIR="$REPO_DIR/presets/$PRESET"
 
-# ── 3. Required skills check ──────────────────────────────────────────────────
+# ── 3. Skills check ───────────────────────────────────────────────────────────
 echo ""
 say "Checking required skills..."
 
 SKILLS_DIR_GLOBAL="$HOME/.claude/skills"
 SKILLS_DIR_LOCAL="$(pwd)/.claude/skills"
-
-required_skills="caveman"  # from preset.json — hardcoded for now
-
+required_skills="caveman"
 missing=""
+
 for skill in $required_skills; do
   found=0
   [ -f "$SKILLS_DIR_GLOBAL/$skill.md" ] && found=1
@@ -67,15 +96,13 @@ done
 if [ -n "$missing" ]; then
   echo ""
   warn "Missing skills:$missing"
-  echo ""
-  echo "Skills must be installed to continue."
   echo "Install them from: https://github.com/anthropics/claude-code (Skills section)"
-  echo "or copy .md skill files to $SKILLS_DIR_GLOBAL/"
+  echo "or copy .md files to $SKILLS_DIR_GLOBAL/"
   echo ""
   ask "Continue anyway? [y/N]:"
   read cont
   case "$cont" in
-    y|Y) warn "Continuing without required skills — some features may not work" ;;
+    y|Y) warn "Continuing — some features may not work" ;;
     *)   err "Aborted."; exit 1 ;;
   esac
 fi
@@ -113,12 +140,8 @@ echo ""
 say "Patching settings.json..."
 
 SETTINGS="$CLAUDE_DIR/settings.json"
+[ ! -f "$SETTINGS" ] && echo '{}' > "$SETTINGS"
 
-if [ ! -f "$SETTINGS" ]; then
-  echo '{}' > "$SETTINGS"
-fi
-
-# Use jq to merge — preserves existing keys, adds/updates navbar keys
 TRACKER="sh $CLAUDE_DIR/hooks/plugin-tracker.sh"
 STATUSLINE="sh $CLAUDE_DIR/statusline-custom.sh"
 
@@ -140,14 +163,25 @@ jq \
   ' "$SETTINGS" > "$SETTINGS.tmp" && mv "$SETTINGS.tmp" "$SETTINGS"
 ok "settings.json patched"
 
-# ── 7. Summary ────────────────────────────────────────────────────────────────
+# ── 7. Cleanup cloned repo ────────────────────────────────────────────────────
+if [ "$BOOTSTRAPPED" -eq 1 ] && [ -n "$CLONE_DIR" ]; then
+  echo ""
+  ask "Delete cloned repo? [Y/n]:"
+  read del_choice
+  case "${del_choice:-Y}" in
+    n|N) ok "Kept at $CLONE_DIR" ;;
+    *)   rm -rf "$CLONE_DIR"; ok "Repo deleted" ;;
+  esac
+fi
+
+# ── 8. Summary ────────────────────────────────────────────────────────────────
 echo ""
 say "Done! ✓"
 echo ""
-echo "What was installed:"
+echo "Installed:"
 echo "  • $CLAUDE_DIR/statusline-custom.sh"
 echo "  • $CLAUDE_DIR/hooks/plugin-tracker.sh"
-echo "  • settings.json — statusLine + SessionStart + PostToolUse hooks"
+echo "  • settings.json — statusLine + hooks patched"
 echo ""
-warn "Restart Claude Code to activate the changes."
+warn "Restart Claude Code to activate."
 echo ""

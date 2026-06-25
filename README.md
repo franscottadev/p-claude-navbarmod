@@ -23,6 +23,12 @@ Customized bottom statusline + hooks for Claude Code. Shows model, context windo
 ## Install
 
 ```sh
+curl -fsSL https://raw.githubusercontent.com/franscottadev/p-claude-navbarmod/main/install.sh | bash
+```
+
+Or manually:
+
+```sh
 git clone https://github.com/franscottadev/p-claude-navbarmod
 cd p-claude-navbarmod
 ./install.sh

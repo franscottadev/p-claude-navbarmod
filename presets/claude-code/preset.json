@@ -1,0 +1,14 @@
+{
+  "name": "claude-code",
+  "label": "Claude Code",
+  "description": "Statusline + hooks for Claude Code sessions. Shows model, context, tokens, rate limits, and active plugins.",
+  "required_skills": ["caveman"],
+  "optional_skills": ["memo", "playwright"],
+  "plugin_flags": {
+    "mcp__plugin_playwright_*": "playwright",
+    "mcp__memo__*": "memo"
+  },
+  "perm_flags": {
+    "caveman": "grep -qi 'caveman' \"$HOME/.claude/CLAUDE.md\" 2>/dev/null"
+  }
+}

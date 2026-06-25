@@ -72,39 +72,28 @@ read preset_choice
 PRESET="claude-code"
 ok "Preset: $PRESET"
 
-# ── 3. Skills check ───────────────────────────────────────────────────────────
+# ── 3. Skills detection (informational only — no skills required) ─────────────
 echo ""
-say "Checking required skills..."
+say "Detecting installed skills..."
 
 SKILLS_DIR_GLOBAL="$HOME/.claude/skills"
 SKILLS_DIR_LOCAL="$(pwd)/.claude/skills"
-required_skills="caveman"
-missing=""
+found_skills=""
 
-for skill in $required_skills; do
-  found=0
-  [ -f "$SKILLS_DIR_GLOBAL/$skill.md" ] && found=1
-  [ -f "$SKILLS_DIR_LOCAL/$skill.md" ]  && found=1
-  if [ "$found" -eq 1 ]; then
-    ok "Skill '$skill' found"
-  else
-    warn "Skill '$skill' not found"
-    missing="$missing $skill"
-  fi
+for dir in "$SKILLS_DIR_GLOBAL" "$SKILLS_DIR_LOCAL"; do
+  [ -d "$dir" ] || continue
+  for f in "$dir"/*.md; do
+    [ -f "$f" ] || continue
+    skill=$(basename "$f" .md)
+    case " $found_skills " in
+      *" $skill "*) ;;
+      *) found_skills="$found_skills $skill"; ok "Found: $skill" ;;
+    esac
+  done
 done
 
-if [ -n "$missing" ]; then
-  echo ""
-  warn "Missing skills:$missing"
-  echo "Install them from: https://github.com/anthropics/claude-code (Skills section)"
-  echo "or copy .md files to $SKILLS_DIR_GLOBAL/"
-  echo ""
-  ask "Continue anyway? [y/N]:"
-  read cont
-  case "$cont" in
-    y|Y) warn "Continuing — some features may not work" ;;
-    *)   err "Aborted."; exit 1 ;;
-  esac
+if [ -z "$found_skills" ]; then
+  warn "No skills found — permanent dots won't show until skills are installed to ~/.claude/skills/"
 fi
 
 # ── 4. Backup ─────────────────────────────────────────────────────────────────

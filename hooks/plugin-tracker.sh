@@ -15,9 +15,18 @@ case "$EVENT" in
   session_start)
     rm -rf "$FLAG_DIR"
     mkdir -p "$FLAG_DIR"
-    if grep -qi "caveman" "$HOME/.claude/CLAUDE.md" 2>/dev/null; then
-      touch "$FLAG_DIR/caveman.perm"
-      log "session_start: wrote caveman.perm"
+    # Detect any installed skills referenced in CLAUDE.md → permanent flags
+    SKILLS_DIR="$HOME/.claude/skills"
+    CLAUDE_MD="$HOME/.claude/CLAUDE.md"
+    if [ -d "$SKILLS_DIR" ] && [ -f "$CLAUDE_MD" ]; then
+      for skill_file in "$SKILLS_DIR"/*.md; do
+        [ -f "$skill_file" ] || continue
+        skill=$(basename "$skill_file" .md)
+        if grep -qi "$skill" "$CLAUDE_MD" 2>/dev/null; then
+          touch "$FLAG_DIR/${skill}.perm"
+          log "session_start: wrote ${skill}.perm"
+        fi
+      done
     fi
     ;;
   tool_use)
@@ -26,9 +35,16 @@ case "$EVENT" in
     log "tool_use input: $INPUT"
     TOOL=$(printf '%s' "$INPUT" | jq -r '.tool_name // .toolName // empty' 2>/dev/null)
     log "tool_use TOOL=$TOOL"
+    # Extract plugin name generically from mcp__<plugin>__<action>
+    # Strip leading "plugin_" prefix if present (e.g. mcp__plugin_playwright_playwright__*)
     case "$TOOL" in
-      mcp__plugin_playwright_*) touch "$FLAG_DIR/playwright"; log "wrote playwright" ;;
-      mcp__memo__*)             touch "$FLAG_DIR/memo";       log "wrote memo" ;;
+      mcp__*)
+        plugin=$(printf '%s' "$TOOL" | sed 's/^mcp__//; s/__.*//; s/^plugin_//')
+        if [ -n "$plugin" ]; then
+          touch "$FLAG_DIR/$plugin"
+          log "wrote flag: $plugin"
+        fi
+        ;;
     esac
     ;;
 esac
